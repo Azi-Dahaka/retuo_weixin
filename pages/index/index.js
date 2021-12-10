@@ -1,48 +1,61 @@
 // index.js
 // 获取应用实例
+import api from '../../config/api.js'
 const app = getApp()
 
 Page({
   data: {
-    motto: 'Hello World',
-    userInfo: {},
-    hasUserInfo: false,
-    canIUse: wx.canIUse('button.open-type.getUserInfo'),
-    canIUseGetUserProfile: false,
-    canIUseOpenData: wx.canIUse('open-data.type.userAvatarUrl') && wx.canIUse('open-data.type.userNickName') // 如需尝试获取用户信息可改为false
-  },
-  // 事件处理函数
-  bindViewTap() {
-    wx.navigateTo({
-      url: '../logs/logs'
-    })
+    imgsrc: '/images/dabai2.jpeg',
   },
   onLoad() {
-    if (wx.getUserProfile) {
-      this.setData({
-        canIUseGetUserProfile: true
-      })
-    }
   },
-  getUserProfile(e) {
-    // 推荐使用wx.getUserProfile获取用户信息，开发者每次通过该接口获取用户个人信息均需用户确认，开发者妥善保管用户快速填写的头像昵称，避免重复弹窗
-    wx.getUserProfile({
-      desc: '展示用户信息', // 声明获取用户个人信息后的用途，后续会展示在弹窗中，请谨慎填写
-      success: (res) => {
-        console.log(res)
-        this.setData({
-          userInfo: res.userInfo,
-          hasUserInfo: true
+  wxlogin(){
+    wx.login({
+      success: res => {
+        // 发送 res.code 到后台换取 openId, sessionKey, unionId
+        //console.log(res);
+        var that = this;
+        // 获取用户信息
+        wx.getSetting({
+          success: resp => {
+            if (resp.authSetting['scope.userInfo']) {
+              // 已经授权，可以直接调用 getUserInfo 获取头像昵称，不会弹框
+              wx.getUserInfo({
+                success: userResult => {
+                  var platUserInfoMap = {}
+                  platUserInfoMap["encryptedData"] = userResult.encryptedData;
+                  platUserInfoMap["iv"] = userResult.iv;
+                  //console.log(res.code)
+                  //console.log(platUserInfoMap)
+                  wx.request({
+                    url: api.wxlogin,
+                    data: { 
+                      platCode: res.code,
+                      platUserInfoMap: platUserInfoMap,
+                    },
+                    header: {
+                      "Content-Type": "application/json;charset=utf-8"
+                    },
+                    method: 'POST',
+                    dataType:'json',
+                    success: function (res) {
+                      console.log(res)
+                      if(res.data.code==200){
+                        wx.setStorageSync("userinfo", res.data.userinfo) //设置本地缓存
+                        wx.navigateTo({
+                          url: '../chat/chat',
+                        })
+                      }
+                    },
+                  fail: function (err) { },//请求失败
+                  complete: function () { }//请求完成后执行的函数
+                  })
+                }
+               })
+              } 
+            }
         })
       }
-    })
-  },
-  getUserInfo(e) {
-    // 不推荐使用getUserInfo获取用户信息，预计自2021年4月13日起，getUserInfo将不再弹出弹窗，并直接返回匿名的用户个人信息
-    console.log(e)
-    this.setData({
-      userInfo: e.detail.userInfo,
-      hasUserInfo: true
     })
   }
 })
